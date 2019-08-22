@@ -1,0 +1,14 @@
+{
+ "schemaVersion" :2 ,
+ "dockerfileLines" :[
+		"FROM python:3.7.0-alpine",
+		"COPY ./ /app",
+		"WORKDIR /app",
+		"RUN ls -a",
+        "RUN apk add --no-cache gcc libc-dev libxslt-dev postgresql-dev",
+		"RUN pip3 install -r requirements.txt",
+		"CMD [ \"python3\", \"app.py\" ]",
+		"EXPOSE 5000"
+        ]
+}
+
