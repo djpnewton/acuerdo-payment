@@ -167,11 +167,31 @@ def hello():
 def request_create():
     sig = request.headers.get('X-Signature')
     content = request.json
-    api_key = content['api_key']
-    token = content['token']
-    asset = content['asset']
-    amount = content['amount']
-    return_url = content['return_url']
+    try:
+        api_key = content['api_key']
+    except:
+        print('api_key not in request')
+        abort(400)
+    try:
+        token = content['token']
+    except:
+        print('token not in request')
+        abort(400)
+    try:
+        asset = content['asset']
+    except:
+        print('asset not in request')
+        abort(400)
+    try:
+        amount = content['amount']
+    except:
+        print('amount not in request')
+        abort(400)
+    try:
+        return_url = content['return_url']
+    except:
+        print('return_url not in request')
+        abort(400)
     if asset != 'NZD':
         print('asset %s not supported' % asset)
         abort(400, 'asset (%s) not supported' % asset)
