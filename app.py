@@ -108,8 +108,7 @@ def auth_header():
     return 'Basic ' + data
 
 def create_session(amount, token):
-    amount_dollars = Decimal(amount) / Decimal(100)
-    body = {'type': 'purchase', 'amount': moneyfmt(amount_dollars, sep=''), 'currency': 'NZD', 'merchantReference': token}
+    body = {'type': 'purchase', 'amount': moneyfmt(Decimal(amount), sep=''), 'currency': 'NZD', 'merchantReference': token}
     #body['methods'] = ['account2account']
     body['methods'] = ['card']
     callback_url = SITE_URL + '/request/' + token
