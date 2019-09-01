@@ -105,10 +105,10 @@
         <script type="text/javascript">                 
             {% if not completed and not cancelled %}
                 {% if windcave_url %}
-                window.location.replace({{windcave_url}});
+                window.location.replace("{{windcave_url}}");
                 {% endif %}
             {% elif return_url %}
-                window.location.replace({{return_url}});
+                window.location.replace("{{return_url}}");
             {% endif %}
 		</script>
 
