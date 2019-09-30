@@ -59,3 +59,71 @@ class PaymentRequest(Base):
     def to_json(self):
         schema = PaymentRequestSchema()
         return schema.dump(self).data
+
+class PayoutRequestSchema(Schema):
+    date = fields.Float()
+    token = fields.String()
+    asset = fields.String()
+    amount = fields.Integer()
+    sender = fields.String()
+    sender_account = fields.String()
+    sender_reference = fields.String()
+    sender_code = fields.String()
+    receiver = fields.String()
+    receiver_account = fields.String()
+    receiver_reference = fields.String()
+    receiver_code = fields.String()
+    email = fields.String()
+    email_sent = fields.Boolean()
+    processed = fields.Boolean()
+
+class PayoutRequest(Base):
+    __tablename__ = 'payout_requests'
+    id = Column(Integer, primary_key=True)
+    date = Column(Float, nullable=False, unique=False)
+    token = Column(String, nullable=False, unique=True)
+    asset = Column(String, nullable=False)
+    amount = Column(Integer, nullable=False)
+    sender = Column(String, nullable=False)
+    sender_account = Column(String, nullable=False)
+    sender_reference = Column(String, nullable=False)
+    sender_code = Column(String, nullable=False)
+    receiver = Column(String, nullable=False)
+    receiver_account = Column(String, nullable=False)
+    receiver_reference = Column(String, nullable=False)
+    receiver_code = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    email_sent = Column(Boolean)
+    processed = Column(Boolean)
+
+    def __init__(self, token, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, email, email_sent):
+        self.date = time.time()
+        self.token = token
+        self.asset = asset
+        self.amount = amount
+        self.sender = sender
+        self.sender_account = sender_account
+        self.sender_reference = sender_reference
+        self.sender_code = sender_code
+        self.receiver = receiver
+        self.receiver_account = receiver_account
+        self.receiver_reference = receiver_reference
+        self.receiver_code = receiver_code
+        self.email = email
+        self.email_sent = email_sent
+        self.processed = False
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    def __repr__(self):
+        return '<PayoutRequest %r>' % (self.token)
+
+    def to_json(self):
+        schema = PayoutRequestSchema()
+        return schema.dump(self).data

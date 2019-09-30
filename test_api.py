@@ -21,18 +21,34 @@ def construct_parser():
 
     ## Account / Device creation
 
-    parser_req_create = subparsers.add_parser("request_create", help="Create an request")
-    parser_req_create.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
-    parser_req_create.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
-    parser_req_create.add_argument("token", metavar="TOKEN", type=str, help="the request token")
-    parser_req_create.add_argument("asset", metavar="ASSET", type=str, help="the request asset (NZD)")
-    parser_req_create.add_argument("amount", metavar="AMOUNT", type=int, help="the request amount (in cents)")
-    parser_req_create.add_argument("return_url", metavar="RETURN_URL", type=str, help="the return url")
+    parser_payment_create = subparsers.add_parser("payment_create", help="Create a payment request")
+    parser_payment_create.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
+    parser_payment_create.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
+    parser_payment_create.add_argument("token", metavar="TOKEN", type=str, help="the request token")
+    parser_payment_create.add_argument("asset", metavar="ASSET", type=str, help="the request asset (NZD)")
+    parser_payment_create.add_argument("amount", metavar="AMOUNT", type=int, help="the request amount (in cents)")
+    parser_payment_create.add_argument("return_url", metavar="RETURN_URL", type=str, help="the return url")
 
-    parser_req_status = subparsers.add_parser("request_status", help="Check a request request")
-    parser_req_status.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
-    parser_req_status.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
-    parser_req_status.add_argument("token", metavar="TOKEN", type=str, help="the request token")
+    parser_payment_status = subparsers.add_parser("payment_status", help="Check a payment request")
+    parser_payment_status.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
+    parser_payment_status.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
+    parser_payment_status.add_argument("token", metavar="TOKEN", type=str, help="the request token")
+
+    parser_payout_create = subparsers.add_parser("payout_create", help="Create a payout request")
+    parser_payout_create.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
+    parser_payout_create.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
+    parser_payout_create.add_argument("token", metavar="TOKEN", type=str, help="the request token")
+    parser_payout_create.add_argument("asset", metavar="ASSET", type=str, help="the request asset (NZD)")
+    parser_payout_create.add_argument("amount", metavar="AMOUNT", type=int, help="the request amount (in cents)")
+    parser_payout_create.add_argument("account_number", metavar="ACCOUNT_NUMBER", type=str, help="the request bank account number")
+    parser_payout_create.add_argument("account_name", metavar="ACCOUNT_NUMBER", type=str, help="the request bank account number")
+    parser_payout_create.add_argument("reference", metavar="REFERENCE", type=str, help="the request reference")
+    parser_payout_create.add_argument("code", metavar="CODE", type=str, help="the request code")
+
+    parser_payout_status = subparsers.add_parser("payout_status", help="Check a payout request")
+    parser_payout_status.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
+    parser_payout_status.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
+    parser_payout_status.add_argument("token", metavar="TOKEN", type=str, help="the request token")
 
     return parser
 
@@ -70,15 +86,27 @@ def check_request_status(r):
         print(r.text)
         raise e
 
-def request_create(args):
-    print(":: calling request create..")
-    r = req("request", {"token": args.token, "asset": args.asset, "amount": args.amount, "return_url": args.return_url}, args.api_key, args.api_secret)
+def payment_create(args):
+    print(":: calling payment create..")
+    r = req("payment_create", {"token": args.token, "asset": args.asset, "amount": args.amount, "return_url": args.return_url}, args.api_key, args.api_secret)
     check_request_status(r)
     print(r.text)
 
-def request_status(args):
-    print(":: calling request status..")
-    r = req("status", {"token": args.token}, args.api_key, args.api_secret)
+def payment_status(args):
+    print(":: calling payment status..")
+    r = req("payment_status", {"token": args.token}, args.api_key, args.api_secret)
+    check_request_status(r)
+    print(r.text)
+
+def payout_create(args):
+    print(":: calling payout create..")
+    r = req("payout_create", {"token": args.token, "asset": args.asset, "amount": args.amount, "account_number": args.account_number, "account_name": args.account_name, "reference": args.reference, "code": args.code}, args.api_key, args.api_secret)
+    check_request_status(r)
+    print(r.text)
+
+def payout_status(args):
+    print(":: calling payout status..")
+    r = req("payout_status", {"token": args.token}, args.api_key, args.api_secret)
     check_request_status(r)
     print(r.text)
 
@@ -89,10 +117,14 @@ if __name__ == "__main__":
 
     # set appropriate function
     function = None
-    if args.command == "request_create":
-        function = request_create
-    elif args.command == "request_status":
-        function = request_status
+    if args.command == "payment_create":
+        function = payment_create
+    elif args.command == "payment_status":
+        function = payment_status
+    if args.command == "payout_create":
+        function = payout_create
+    elif args.command == "payout_status":
+        function = payout_status
     else:
         parser.print_help()
         sys.exit(EXIT_NO_COMMAND)
