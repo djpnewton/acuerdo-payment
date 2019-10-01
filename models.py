@@ -104,7 +104,7 @@ class PayoutRequest(Base):
     def __init__(self, token, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, email, email_sent):
         self.date = time.time()
         self.token = token
-        self.secret = hexlify(os.urandom(20))
+        self.secret = str(hexlify(os.urandom(20)), 'ascii').upper()
         self.asset = asset
         self.amount = amount
         self.sender = sender
