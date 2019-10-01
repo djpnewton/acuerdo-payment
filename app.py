@@ -243,8 +243,22 @@ def payment_create():
 def payment_status():
     if not PAYMENTS_ENABLED:
         return abort(404)
+    sig = request.headers.get('X-Signature')
     content = request.json
-    token = content['token']
+    content = request.json
+    try:
+        api_key = content['api_key']
+    except:
+        print('api_key not in request')
+        abort(400)
+    try:
+        token = content['token']
+    except:
+        print('token not in request')
+        abort(400)
+    if not check_auth(api_key, sig, request.data):
+        print('auth failure')
+        abort(400)
     print("looking for %s" % token)
     req = PaymentRequest.from_token(db_session, token)
     if req:
@@ -280,10 +294,10 @@ def payment_status_2(token=None):
     cancelled = req.status == CND
     return render_template('payment_request.html', production=PRODUCTION, token=token, completed=completed, cancelled=cancelled, req=req, windcave_url=windcave_url, return_url=req.return_url)
 
-def send_payout_email(token):
+def send_payout_email(token, secret):
     print("sending email to %s" % EMAIL_TO)
     subject = '%s payout' % SITE_URL
-    url = '%s/payout/%s' % (SITE_URL, token)
+    url = '%s/payout/%s/%s' % (SITE_URL, token, secret)
     html_content = '<a href="%s">%s</a>' % (url, url)
     message = Mail(from_email=EMAIL_FROM, to_emails=EMAIL_TO, subject=subject, html_content=html_content)
 
@@ -350,7 +364,7 @@ def payout_create():
         abort(400)
     print("creating payout request object for %s" % token)
     req = PayoutRequest(token, asset, amount, SENDER_NAME, SENDER_ACCOUNT, reference, code, account_name, account_number, reference, code, EMAIL_TO, False)
-    send_payout_email(token)
+    send_payout_email(token, req.secret)
     req.email_sent = True
 
     db_session.add(req)
@@ -361,21 +375,37 @@ def payout_create():
 def payout_status():
     if not PAYOUTS_ENABLED:
         return abort(404)
+    sig = request.headers.get('X-Signature')
     content = request.json
-    token = content['token']
+    content = request.json
+    try:
+        api_key = content['api_key']
+    except:
+        print('api_key not in request')
+        abort(400)
+    try:
+        token = content['token']
+    except:
+        print('token not in request')
+        abort(400)
+    if not check_auth(api_key, sig, request.data):
+        print('auth failure')
+        abort(400)
     print("looking for %s" % token)
     req = PayoutRequest.from_token(db_session, token)
     if req:
         return jsonify(req.to_json())
     return abort(404)
 
-@app.route('/payout/<token>', methods=['GET'])
-def payout_status_2(token=None):
+@app.route('/payout/<token>/<secret>', methods=['GET'])
+def payout_status_2(token=None, secret=None):
     if not PAYOUTS_ENABLED:
         return abort(404)
     req = PayoutRequest.from_token(db_session, token)
     if not req:
         return abort(404, 'sorry, request not found')
+    if req.secret != secret:
+        return abort(400, 'sorry, request not authorised')
     return render_template('payout_request.html', production=PRODUCTION, token=token, req=req)
 
 @app.route('/payout_processed', methods=['POST'])
@@ -384,13 +414,15 @@ def payout_processed():
         return abort(404)
     content = request.form
     token = content['token']
+    secret = content['secret']
     print("looking for %s" % token)
     req = PayoutRequest.from_token(db_session, token)
-    if req:
+    if req and req.secret == secret:
         req.processed = True
+        req.status = "completed"
         db_session.add(req)
         db_session.commit()
-        return redirect('/payout/' + req.token)
+        return redirect('/payout/%s/%s' % (token, secret))
     return abort(404)
 
 @app.route('/payout/BNZ_IB4B_file/<token>', methods=['GET'])

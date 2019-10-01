@@ -79,6 +79,7 @@
                     <p>
                         <form action="/payout_processed" method="post">
                             <input type="hidden" name="token" value="{{req.token}}" />
+                            <input type="hidden" name="secret" value="{{req.secret}}" />
                             <input type="submit" value="Set processed" />
                         </form>
                     </p>

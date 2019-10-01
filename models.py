@@ -1,4 +1,6 @@
 import time
+import os
+from binascii import hexlify
 
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
 import sqlalchemy.types as types
@@ -76,12 +78,14 @@ class PayoutRequestSchema(Schema):
     email = fields.String()
     email_sent = fields.Boolean()
     processed = fields.Boolean()
+    status = fields.String()
 
 class PayoutRequest(Base):
     __tablename__ = 'payout_requests'
     id = Column(Integer, primary_key=True)
     date = Column(Float, nullable=False, unique=False)
     token = Column(String, nullable=False, unique=True)
+    secret = Column(String, nullable=False)
     asset = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
     sender = Column(String, nullable=False)
@@ -95,10 +99,12 @@ class PayoutRequest(Base):
     email = Column(String, nullable=False)
     email_sent = Column(Boolean)
     processed = Column(Boolean)
+    status = Column(String)
 
     def __init__(self, token, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, email, email_sent):
         self.date = time.time()
         self.token = token
+        self.secret = hexlify(os.urandom(20))
         self.asset = asset
         self.amount = amount
         self.sender = sender
@@ -112,6 +118,7 @@ class PayoutRequest(Base):
         self.email = email
         self.email_sent = email_sent
         self.processed = False
+        self.status = "created"
 
     @classmethod
     def count(cls, session):
