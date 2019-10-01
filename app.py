@@ -425,13 +425,15 @@ def payout_processed():
         return redirect('/payout/%s/%s' % (token, secret))
     return abort(404)
 
-@app.route('/payout/BNZ_IB4B_file/<token>', methods=['GET'])
-def payout_ib4b_file(token=None):
+@app.route('/payout/BNZ_IB4B_file/<token>/<secret>', methods=['GET'])
+def payout_ib4b_file(token=None, secret=None):
     if not PAYOUTS_ENABLED:
         return abort(404)
     req = PayoutRequest.from_token(db_session, token)
     if not req:
         return abort(404, 'sorry, request not found')
+    if req.secret != secret:
+        return abort(400, 'sorry, request not authorised')
     # create output 
     output = io.StringIO()
     txs = [(req.receiver_account, req.amount, req.sender_reference, req.sender_code, req.receiver, req.receiver_reference, req.receiver_code)]
