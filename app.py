@@ -9,6 +9,7 @@ import sys
 from decimal import *
 import json
 import io
+import datetime
 
 from flask import Flask, request, jsonify, abort, render_template, make_response, redirect, url_for
 import requests
@@ -180,6 +181,10 @@ def check_auth(api_key, sig, body):
         return False
     our_sig = create_sig(API_SECRET, body)
     return sig == our_sig
+
+@app.template_filter('format_timestamp')
+def format_timestamp(ts):
+    return datetime.datetime.fromtimestamp(ts).strftime('%Y/%m/%d %H:%M %Z')
 
 @app.route('/')
 def hello():

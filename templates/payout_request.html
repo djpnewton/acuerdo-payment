@@ -58,6 +58,9 @@
                 <div class="col-lg-12">
                     <h3 style="margin-top: 40px;">Payout processed: {{req.processed}}</h3>
                     <p>
+                        Date: {{ req.date|format_timestamp }}
+                    </p>
+                    <p>
                         Receiver Name: {{req.receiver}}
                     </p>
                     <p>
