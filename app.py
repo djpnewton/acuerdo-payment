@@ -184,7 +184,8 @@ def check_auth(api_key, sig, body):
 
 @app.template_filter('format_timestamp')
 def format_timestamp(ts):
-    return datetime.datetime.fromtimestamp(ts).strftime('%Y/%m/%d %H:%M %Z')
+    tz = datetime.datetime.now().astimezone().tzinfo
+    return datetime.datetime.fromtimestamp(ts, tz).strftime('%Y/%m/%d %H:%M %Z')
 
 @app.route('/')
 def hello():
