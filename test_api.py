@@ -50,6 +50,9 @@ def construct_parser():
     parser_payout_status.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
     parser_payout_status.add_argument("token", metavar="TOKEN", type=str, help="the request token")
 
+    parser_bankaccount_is_valid = subparsers.add_parser("bankaccount_is_valid", help="Check a bank account")
+    parser_bankaccount_is_valid.add_argument("account", metavar="ACCOUNT", type=str, help="the bank account")
+
     return parser
 
 def create_sig(api_secret, message):
@@ -110,6 +113,12 @@ def payout_status(args):
     check_request_status(r)
     print(r.text)
 
+def bankaccount_is_valid(args):
+    print(":: calling bank account is valid..")
+    r = req("bankaccount_is_valid", {"account": args.account}, None, None)
+    check_request_status(r)
+    print(r.text)
+
 if __name__ == "__main__":
     # parse arguments
     parser = construct_parser()
@@ -125,6 +134,8 @@ if __name__ == "__main__":
         function = payout_create
     elif args.command == "payout_status":
         function = payout_status
+    elif args.command == "bankaccount_is_valid":
+        function = bankaccount_is_valid
     else:
         parser.print_help()
         sys.exit(EXIT_NO_COMMAND)

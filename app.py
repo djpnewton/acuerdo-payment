@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 import os
 import logging
-import secrets
 import hmac
 import hashlib
 import base64
@@ -15,6 +14,7 @@ from flask import Flask, request, jsonify, abort, render_template, make_response
 import requests
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from stdnum.nz import bankaccount
 
 from database import db_session, init_db
 from models import PaymentRequest, PayoutRequest
@@ -383,7 +383,6 @@ def payout_status():
         return abort(404)
     sig = request.headers.get('X-Signature')
     content = request.json
-    content = request.json
     try:
         api_key = content['api_key']
     except:
@@ -402,6 +401,17 @@ def payout_status():
     if req:
         return jsonify(req.to_json())
     return abort(404)
+
+@app.route('/bankaccount_is_valid', methods=['POST'])
+def bankaccount_is_valid():
+    content = request.json
+    try:
+        account = content['account']
+    except:
+        print('account not in request')
+        abort(400)
+    result = bankaccount.is_valid(account)
+    return jsonify({"account": account, "result": result})
 
 @app.route('/payout/<token>/<secret>', methods=['GET'])
 def payout_status_2(token=None, secret=None):
