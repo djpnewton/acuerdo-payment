@@ -370,9 +370,11 @@ def payout_create():
         abort(400)
     print("creating payout request object for %s" % token)
     req = PayoutRequest(token, asset, amount, SENDER_NAME, SENDER_ACCOUNT, reference, code, account_name, account_number, reference, code, EMAIL_TO, False)
+    db_session.add(req)
+    db_session.commit()
+
     send_payout_email(token, req.secret)
     req.email_sent = True
-
     db_session.add(req)
     db_session.commit()
     return jsonify(req.to_json())
