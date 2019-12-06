@@ -17,7 +17,7 @@ from sendgrid.helpers.mail import Mail
 from stdnum.nz import bankaccount
 
 from database import db_session, init_db
-from models import PaymentRequest, PayoutRequest
+from models import PaymentRequest, PayoutRequest, PayoutGroup, PayoutGroupRequest
 import bnz_ib4b
 
 init_db()
@@ -300,11 +300,17 @@ def payment_status_2(token=None):
     cancelled = req.status == CND
     return render_template('payment_request.html', production=PRODUCTION, token=token, completed=completed, cancelled=cancelled, req=req, windcave_url=windcave_url, return_url=req.return_url)
 
-def send_payout_email(token, secret):
+def send_payout_email(group):
     print("sending email to %s" % EMAIL_TO)
     subject = '%s payout' % SITE_URL
-    url = '%s/payout/%s/%s' % (SITE_URL, token, secret)
-    html_content = '<a href="%s">%s</a>' % (url, url)
+    html_content = ''
+    for req in group.requests:
+        url = '%s/payout_request/%s/%s' % (SITE_URL, req.token, req.secret)
+        html_content += '<a href="%s">%s</a><br/>' % (url, url)
+    html_content += '<br/><br/>'
+    if len(group.requests) > 0:
+        all_url = '%s/payout_group/%s/%s' % (SITE_URL, group.token, group.secret)
+        html_content += '<a href="%s">as a group</a>' % all_url
     message = Mail(from_email=EMAIL_FROM, to_emails=EMAIL_TO, subject=subject, html_content=html_content)
 
     sg = SendGridAPIClient(SENDGRID_API_KEY)
@@ -368,12 +374,20 @@ def payout_create():
     if req:
         print('%s already exists' % token)
         abort(400)
-    print("creating payout request object for %s" % token)
+    # create payout request
     req = PayoutRequest(token, asset, amount, SENDER_NAME, SENDER_ACCOUNT, reference, code, account_name, account_number, reference, code, EMAIL_TO, False)
     db_session.add(req)
+    # create payout group
+    group = PayoutGroup()
+    db_session.add(group)
+    db_session.flush()
+    reqs = PayoutRequest.not_processed(db_session)
+    for r in reqs:
+        group_req = PayoutGroupRequest(group, r)
+        db_session.add(group_req)
     db_session.commit()
-
-    send_payout_email(token, req.secret)
+    # send email
+    send_payout_email(group)
     req.email_sent = True
     db_session.add(req)
     db_session.commit()
@@ -415,7 +429,7 @@ def bankaccount_is_valid():
     result = bankaccount.is_valid(account)
     return jsonify({"account": account, "result": result})
 
-@app.route('/payout/<token>/<secret>', methods=['GET'])
+@app.route('/payout_request/<token>/<secret>', methods=['GET'])
 def payout_status_2(token=None, secret=None):
     if not PAYOUTS_ENABLED:
         return abort(404)
@@ -424,10 +438,29 @@ def payout_status_2(token=None, secret=None):
         return abort(404, 'sorry, request not found')
     if req.secret != secret:
         return abort(400, 'sorry, request not authorised')
-    return render_template('payout_request.html', production=PRODUCTION, token=token, req=req)
+    return render_template('payout.html', production=PRODUCTION, token=token, req=req)
 
-@app.route('/payout_processed', methods=['POST'])
-def payout_processed():
+@app.route('/payout_group/<token>/<secret>', methods=['GET'])
+def payout_group(token=None, secret=None):
+    if not PAYOUTS_ENABLED:
+        return abort(404)
+    group = PayoutGroup.from_token(db_session, token)
+    if not group:
+        return abort(404, 'sorry, request not found')
+    if group.secret != secret:
+        return abort(400, 'sorry, request not authorised')
+    repl = []
+    return render_template('payout.html', production=PRODUCTION, token=token, group=group)
+
+def set_payout_requests_complete(reqs):
+    for req in reqs:
+        req.processed = True
+        req.status = "completed"
+        db_session.add(req)
+    db_session.commit()
+
+@app.route('/payout_request_processed', methods=['POST'])
+def payout_request_processed():
     if not PAYOUTS_ENABLED:
         return abort(404)
     content = request.form
@@ -436,15 +469,45 @@ def payout_processed():
     print("looking for %s" % token)
     req = PayoutRequest.from_token(db_session, token)
     if req and req.secret == secret:
-        req.processed = True
-        req.status = "completed"
-        db_session.add(req)
-        db_session.commit()
-        return redirect('/payout/%s/%s' % (token, secret))
+        set_payout_requests_complete([req])
+        return redirect('/payout_request/%s/%s' % (token, secret))
     return abort(404)
 
-@app.route('/payout/BNZ_IB4B_file/<token>/<secret>', methods=['GET'])
-def payout_ib4b_file(token=None, secret=None):
+@app.route('/payout_group_processed', methods=['POST'])
+def payout_group_processed():
+    if not PAYOUTS_ENABLED:
+        return abort(404)
+    content = request.form
+    token = content['token']
+    secret = content['secret']
+    print("looking for %s" % token)
+    group = PayoutGroup.from_token(db_session, token)
+    if group and group.secret == secret:
+        set_payout_requests_complete(group.requests)
+        return redirect('/payout_group/%s/%s' % (token, secret))
+    return abort(404)
+
+def ib4b_response(token, reqs):
+    # create output 
+    output = io.StringIO()
+    # process requests
+    txs = []
+    for req in reqs:
+        # ingore already processed
+        if req.processed:
+            continue
+        tx = (req.receiver_account, req.amount, req.sender_reference, req.sender_code, req.receiver, req.receiver_reference, req.receiver_code)
+        txs.append(tx)
+    bnz_ib4b.write_txs(output, "", req.sender_account, req.sender, txs)
+    # return file response
+    resp = make_response(output.getvalue())
+    resp.headers['Content-Type'] = "application/octet-stream"
+    resp.headers['Content-Disposition'] = "inline; filename=bnz_%s.txt" % token
+    return resp
+
+
+@app.route('/payout_request/BNZ_IB4B_file/<token>/<secret>', methods=['GET'])
+def payout_request_ib4b_file(token=None, secret=None):
     if not PAYOUTS_ENABLED:
         return abort(404)
     req = PayoutRequest.from_token(db_session, token)
@@ -452,15 +515,18 @@ def payout_ib4b_file(token=None, secret=None):
         return abort(404, 'sorry, request not found')
     if req.secret != secret:
         return abort(400, 'sorry, request not authorised')
-    # create output 
-    output = io.StringIO()
-    txs = [(req.receiver_account, req.amount, req.sender_reference, req.sender_code, req.receiver, req.receiver_reference, req.receiver_code)]
-    bnz_ib4b.write_txs(output, "", req.sender_account, req.sender, txs)
-    # return file response
-    resp = make_response(output.getvalue())
-    resp.headers['Content-Type'] = "application/octet-stream"
-    resp.headers['Content-Disposition'] = "inline; filename=bnz_%s.txt" % req.token
-    return resp
+    return ib4b_response("request_" + req.token, [req])
+
+@app.route('/payout_group/BNZ_IB4B_file/<token>/<secret>', methods=['GET'])
+def payout_group_ib4b_file(token=None, secret=None):
+    if not PAYOUTS_ENABLED:
+        return abort(404)
+    group = PayoutGroup.from_token(db_session, token)
+    if not group:
+        return abort(404, 'sorry, group not found')
+    if group.secret != secret:
+        return abort(400, 'sorry, group not authorised')
+    return ib4b_response("group_" + group.token, group.requests)
 
 if __name__ == '__main__':
     setup_logging(logging.DEBUG)

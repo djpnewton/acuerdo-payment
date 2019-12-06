@@ -44,7 +44,7 @@ class PaymentRequest(Base):
         self.amount = amount
         self.windcave_session_id = windcave_session_id
         self.windcave_status = windcave_status
-        self.status = "created"
+        self.status = 'created'
         self.return_url = return_url
 
     @classmethod
@@ -80,6 +80,15 @@ class PayoutRequestSchema(Schema):
     processed = fields.Boolean()
     status = fields.String()
 
+class PayoutGroupRequest(Base):
+    __tablename__ = 'payout_group_requests'
+    payout_group_id = Column(Integer, ForeignKey('payout_groups.id'), primary_key=True)
+    payout_request_id = Column(Integer, ForeignKey('payout_requests.id'), primary_key=True)
+
+    def __init__(self, group, request):
+        self.payout_group_id = group.id
+        self.payout_request_id = request.id
+
 class PayoutRequest(Base):
     __tablename__ = 'payout_requests'
     id = Column(Integer, primary_key=True)
@@ -100,6 +109,7 @@ class PayoutRequest(Base):
     email_sent = Column(Boolean)
     processed = Column(Boolean)
     status = Column(String)
+    groups = relationship('PayoutGroup', secondary='payout_group_requests', back_populates='requests')
 
     def __init__(self, token, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, email, email_sent):
         self.date = time.time()
@@ -118,7 +128,7 @@ class PayoutRequest(Base):
         self.email = email
         self.email_sent = email_sent
         self.processed = False
-        self.status = "created"
+        self.status = 'created'
 
     @classmethod
     def count(cls, session):
@@ -128,9 +138,28 @@ class PayoutRequest(Base):
     def from_token(cls, session, token):
         return session.query(cls).filter(cls.token == token).first()
 
+    @classmethod
+    def not_processed(cls, session):
+        return session.query(cls).filter(cls.processed == False).all()
+
     def __repr__(self):
         return '<PayoutRequest %r>' % (self.token)
 
     def to_json(self):
         schema = PayoutRequestSchema()
         return schema.dump(self).data
+
+class PayoutGroup(Base):
+    __tablename__ = 'payout_groups'
+    id = Column(Integer, primary_key=True)
+    token = Column(String, nullable=False, unique=True)
+    secret = Column(String, nullable=False, unique=True)
+    requests = relationship('PayoutRequest', secondary='payout_group_requests', back_populates='groups')
+
+    def __init__(self):
+        self.token = str(hexlify(os.urandom(8)), 'ascii').upper()
+        self.secret = str(hexlify(os.urandom(20)), 'ascii').upper()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
