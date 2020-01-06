@@ -187,6 +187,10 @@ def format_timestamp(ts):
     tz = datetime.datetime.now().astimezone().tzinfo
     return datetime.datetime.fromtimestamp(ts, tz).strftime('%Y/%m/%d %H:%M %Z')
 
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db_session.remove()
+
 @app.route('/')
 def hello():
     if PRODUCTION:
