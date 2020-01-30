@@ -5,6 +5,9 @@
         "ENV TZ=NZ",
         "RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
 		"COPY ./ /app",
+        "COPY payout_group_email_cron /etc/cron.d/payout_group_email_cron"
+        "RUN chmod 0644 /etc/cron.d/payout_group_email_cron"
+        "RUN crontab /etc/cron.d/payout_group_email_cron"
 		"WORKDIR /app",
 		"RUN ls -a",
         "RUN apk add --no-cache gcc libc-dev libxslt-dev postgresql-dev",

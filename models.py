@@ -154,12 +154,18 @@ class PayoutGroup(Base):
     id = Column(Integer, primary_key=True)
     token = Column(String, nullable=False, unique=True)
     secret = Column(String, nullable=False, unique=True)
+    expired = Column(Boolean, nullable=False)
     requests = relationship('PayoutRequest', secondary='payout_group_requests', back_populates='groups')
 
     def __init__(self):
         self.token = str(hexlify(os.urandom(8)), 'ascii').upper()
         self.secret = str(hexlify(os.urandom(20)), 'ascii').upper()
+        self.expired = False
 
     @classmethod
     def from_token(cls, session, token):
         return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def expire_all_but(cls, session, group):
+        session.query(cls).filter(cls.id != group.id).update({"expired": True})

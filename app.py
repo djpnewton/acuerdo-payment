@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import os
+import sys
 import logging
 import hmac
 import hashlib
@@ -255,7 +256,6 @@ def payment_status():
         return abort(404)
     sig = request.headers.get('X-Signature')
     content = request.json
-    content = request.json
     try:
         api_key = content['api_key']
     except:
@@ -307,14 +307,10 @@ def payment_status_2(token=None):
 def send_payout_email(group):
     print("sending email to %s" % EMAIL_TO)
     subject = '%s payout' % SITE_URL
-    html_content = ''
-    for req in group.requests:
-        url = '%s/payout_request/%s/%s' % (SITE_URL, req.token, req.secret)
-        html_content += '<a href="%s">%s</a><br/>' % (url, url)
-    html_content += '<br/><br/>'
+    html_content = '%d payout requests<br/><br/>' % len(group.requests)
     if len(group.requests) > 0:
         all_url = '%s/payout_group/%s/%s' % (SITE_URL, group.token, group.secret)
-        html_content += '<a href="%s">as a group</a>' % all_url
+        html_content += '<a href="%s">payout group: %s</a>' % (all_url, group.token)
     message = Mail(from_email=EMAIL_FROM, to_emails=EMAIL_TO, subject=subject, html_content=html_content)
 
     sg = SendGridAPIClient(SENDGRID_API_KEY)
@@ -381,6 +377,10 @@ def payout_create():
     # create payout request
     req = PayoutRequest(token, asset, amount, SENDER_NAME, SENDER_ACCOUNT, reference, code, account_name, account_number, reference, code, EMAIL_TO, False)
     db_session.add(req)
+    db_session.commit()
+    return jsonify(req.to_json())
+
+def _payout_group_create():
     # create payout group
     group = PayoutGroup()
     db_session.add(group)
@@ -392,10 +392,26 @@ def payout_create():
     db_session.commit()
     # send email
     send_payout_email(group)
-    req.email_sent = True
-    db_session.add(req)
+    # expire old groups
+    PayoutGroup.expire_all_but(db_session, group)
     db_session.commit()
-    return jsonify(req.to_json())
+
+@app.route('/payout_group_create', methods=['POST'])
+def payout_group_create():
+    if not PAYOUTS_ENABLED:
+        return abort(404)
+    sig = request.headers.get('X-Signature')
+    content = request.json
+    try:
+        api_key = content['api_key']
+    except:
+        print('api_key not in request')
+        abort(400)
+    if not check_auth(api_key, sig, request.data):
+        print('auth failure')
+        abort(400)
+    _payout_group_create()
+    return 'ok'
 
 @app.route('/payout_status', methods=['POST'])
 def payout_status():
@@ -433,17 +449,6 @@ def bankaccount_is_valid():
     result = bankaccount.is_valid(account)
     return jsonify({"account": account, "result": result})
 
-@app.route('/payout_request/<token>/<secret>', methods=['GET'])
-def payout_status_2(token=None, secret=None):
-    if not PAYOUTS_ENABLED:
-        return abort(404)
-    req = PayoutRequest.from_token(db_session, token)
-    if not req:
-        return abort(404, 'sorry, request not found')
-    if req.secret != secret:
-        return abort(400, 'sorry, request not authorised')
-    return render_template('payout.html', production=PRODUCTION, token=token, req=req)
-
 @app.route('/payout_group/<token>/<secret>', methods=['GET'])
 def payout_group(token=None, secret=None):
     if not PAYOUTS_ENABLED:
@@ -453,6 +458,8 @@ def payout_group(token=None, secret=None):
         return abort(404, 'sorry, request not found')
     if group.secret != secret:
         return abort(400, 'sorry, request not authorised')
+    if group.expired:
+        return abort(400, 'sorry, group is expired')
     repl = []
     return render_template('payout.html', production=PRODUCTION, token=token, group=group)
 
@@ -462,20 +469,6 @@ def set_payout_requests_complete(reqs):
         req.status = "completed"
         db_session.add(req)
     db_session.commit()
-
-@app.route('/payout_request_processed', methods=['POST'])
-def payout_request_processed():
-    if not PAYOUTS_ENABLED:
-        return abort(404)
-    content = request.form
-    token = content['token']
-    secret = content['secret']
-    print("looking for %s" % token)
-    req = PayoutRequest.from_token(db_session, token)
-    if req and req.secret == secret:
-        set_payout_requests_complete([req])
-        return redirect('/payout_request/%s/%s' % (token, secret))
-    return abort(404)
 
 @app.route('/payout_group_processed', methods=['POST'])
 def payout_group_processed():
@@ -510,17 +503,6 @@ def ib4b_response(token, reqs):
     return resp
 
 
-@app.route('/payout_request/BNZ_IB4B_file/<token>/<secret>', methods=['GET'])
-def payout_request_ib4b_file(token=None, secret=None):
-    if not PAYOUTS_ENABLED:
-        return abort(404)
-    req = PayoutRequest.from_token(db_session, token)
-    if not req:
-        return abort(404, 'sorry, request not found')
-    if req.secret != secret:
-        return abort(400, 'sorry, request not authorised')
-    return ib4b_response("request_" + req.token, [req])
-
 @app.route('/payout_group/BNZ_IB4B_file/<token>/<secret>', methods=['GET'])
 def payout_group_ib4b_file(token=None, secret=None):
     if not PAYOUTS_ENABLED:
@@ -535,6 +517,11 @@ def payout_group_ib4b_file(token=None, secret=None):
 if __name__ == '__main__':
     setup_logging(logging.DEBUG)
 
-    # Bind to PORT if defined, otherwise default to 5000.
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    if len(sys.argv) > 1 and sys.argv[1] == 'payout_group_create':
+        import datetime
+        print(datetime.datetime.now())
+        _payout_group_create()
+    else:
+        # Bind to PORT if defined, otherwise default to 5000.
+        port = int(os.environ.get('PORT', 5000))
+        app.run(host='0.0.0.0', port=port)

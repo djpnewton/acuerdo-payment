@@ -1,0 +1,2 @@
+0 11,16 * * * python3 /app/app.py payout_group_create > /app/payout_group_create.log 2>&1
+# An empty line is required at the end of this file for a valid cron file.

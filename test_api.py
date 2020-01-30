@@ -41,7 +41,7 @@ def construct_parser():
     parser_payout_create.add_argument("asset", metavar="ASSET", type=str, help="the request asset (NZD)")
     parser_payout_create.add_argument("amount", metavar="AMOUNT", type=int, help="the request amount (in cents)")
     parser_payout_create.add_argument("account_number", metavar="ACCOUNT_NUMBER", type=str, help="the request bank account number")
-    parser_payout_create.add_argument("account_name", metavar="ACCOUNT_NUMBER", type=str, help="the request bank account number")
+    parser_payout_create.add_argument("account_name", metavar="ACCOUNT_NAME", type=str, help="the request bank account name")
     parser_payout_create.add_argument("reference", metavar="REFERENCE", type=str, help="the request reference")
     parser_payout_create.add_argument("code", metavar="CODE", type=str, help="the request code")
 
@@ -49,6 +49,10 @@ def construct_parser():
     parser_payout_status.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
     parser_payout_status.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
     parser_payout_status.add_argument("token", metavar="TOKEN", type=str, help="the request token")
+
+    parser_payout_group_create = subparsers.add_parser("payout_group_create", help="Create a payout group and send the email")
+    parser_payout_group_create.add_argument("api_key", metavar="API_KEY", type=str, help="the API key")
+    parser_payout_group_create.add_argument("api_secret", metavar="API_SECRET", type=str, help="the API secret")
 
     parser_bankaccount_is_valid = subparsers.add_parser("bankaccount_is_valid", help="Check a bank account")
     parser_bankaccount_is_valid.add_argument("account", metavar="ACCOUNT", type=str, help="the bank account")
@@ -113,6 +117,12 @@ def payout_status(args):
     check_request_status(r)
     print(r.text)
 
+def payout_group_create(args):
+    print(":: calling payout group create..")
+    r = req("payout_group_create", {}, args.api_key, args.api_secret)
+    check_request_status(r)
+    print(r.text)
+
 def bankaccount_is_valid(args):
     print(":: calling bank account is valid..")
     r = req("bankaccount_is_valid", {"account": args.account}, None, None)
@@ -134,6 +144,8 @@ if __name__ == "__main__":
         function = payout_create
     elif args.command == "payout_status":
         function = payout_status
+    elif args.command == "payout_group_create":
+        function = payout_group_create
     elif args.command == "bankaccount_is_valid":
         function = bankaccount_is_valid
     else:
