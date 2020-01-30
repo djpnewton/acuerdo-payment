@@ -2,8 +2,8 @@
  "schemaVersion" :2 ,
  "dockerfileLines" :[
         "FROM python:3.7.0-alpine",
-        "ENV TZ=NZ",
-        "RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
+        "RUN apk add tzdata",
+        "RUN cp /usr/share/zoneinfo/NZ /etc/localtime",
         "COPY payout_group_email_cron /etc/cron.d/payout_group_email_cron",
         "RUN chmod 0644 /etc/cron.d/payout_group_email_cron",
         "RUN crontab /etc/cron.d/payout_group_email_cron",
