@@ -135,10 +135,9 @@ def auth_header():
     data = base64.b64encode(raw).decode('utf-8')
     return 'Basic ' + data
 
-def windcave_create_session(amount, token):
-    body = {'type': 'purchase', 'amount': moneyfmt(Decimal(amount), sep=''), 'currency': 'NZD', 'merchantReference': token}
-    #body['methods'] = ['account2account']
-    body['methods'] = ['card']
+def windcave_create_session(amount_cents, token):
+    body = {'type': 'purchase', 'amount': moneyfmt(Decimal(amount_cents) / Decimal(100), sep=''), 'currency': 'NZD', 'merchantReference': token}
+    body['methods'] = ['account2account']
     callback_url = SITE_URL + '/payment/' + token
     body['callbackUrls'] = {'approved': callback_url, 'declined': callback_url, 'cancelled': callback_url}
     body['notificationUrl'] = callback_url
@@ -221,7 +220,7 @@ def payment_create():
         print('asset not in request')
         abort(400)
     try:
-        amount = content['amount']
+        amount_cents = content['amount']
     except:
         print('amount not in request')
         abort(400)
@@ -241,11 +240,11 @@ def payment_create():
         print('%s already exists' % token)
         abort(400)
     print("creating session with windcave")
-    windcave_session_id, windcave_status = windcave_create_session(amount, token)
+    windcave_session_id, windcave_status = windcave_create_session(amount_cents, token)
     if not windcave_session_id:
         abort(400)
     print("creating payment request object for %s" % token)
-    req = PaymentRequest(token, asset, amount, windcave_session_id, windcave_status, return_url)
+    req = PaymentRequest(token, asset, amount_cents, windcave_session_id, windcave_status, return_url)
     db_session.add(req)
     db_session.commit()
     return jsonify(req.to_json())

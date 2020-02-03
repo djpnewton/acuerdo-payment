@@ -140,7 +140,7 @@ if __name__ == "__main__":
         function = payment_create
     elif args.command == "payment_status":
         function = payment_status
-    if args.command == "payout_create":
+    elif args.command == "payout_create":
         function = payout_create
     elif args.command == "payout_status":
         function = payout_status
