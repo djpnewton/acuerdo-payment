@@ -103,13 +103,23 @@
         <script src="/static/js/site.js"></script>
 
         <script type="text/javascript">                 
-            {% if not completed and not cancelled %}
-                {% if windcave_url %}
-                window.location.replace("{{windcave_url}}");
+            $(document).ready(function() {
+                {% if completed %}
+                if (window.hasOwnProperty("ReactNativeWebView")) {
+                    console.log("react native webview");
+                    window.ReactNativeWebView.postMessage("paymentCompleted");
+                }
                 {% endif %}
-            {% elif return_url %}
-                window.location.replace("{{return_url}}");
-            {% endif %}
+
+                {% if not completed and not cancelled %}
+                    {% if windcave_url %}
+                    window.location.replace("{{windcave_url}}");
+                    {% endif %}
+                {% elif return_url %}
+                    window.location.replace("{{return_url}}");
+                {% endif %}
+            });
+
 		</script>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
