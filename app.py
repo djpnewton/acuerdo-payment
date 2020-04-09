@@ -135,9 +135,12 @@ def auth_header():
     data = base64.b64encode(raw).decode('utf-8')
     return 'Basic ' + data
 
-def windcave_create_session(amount_cents, token):
+def windcave_create_session(amount_cents, token, expiry):
     body = {'type': 'purchase', 'amount': moneyfmt(Decimal(amount_cents) / Decimal(100), sep=''), 'currency': 'NZD', 'merchantReference': token}
     body['methods'] = ['account2account']
+    expiry = datetime.datetime.fromtimestamp(expiry, tz=datetime.timezone.utc) # convert from unix timestamp to datetime
+    expiry = expiry.replace(microsecond=0) # strip microsecond to placate windcave (RFC 3339)
+    body['expires'] = expiry.isoformat()
     callback_url = SITE_URL + '/payment/' + token
     body['callbackUrls'] = {'approved': callback_url, 'declined': callback_url, 'cancelled': callback_url}
     body['notificationUrl'] = callback_url
@@ -229,6 +232,11 @@ def payment_create():
     except:
         print('return_url not in request')
         abort(400)
+    try:
+        expiry = content['expiry']
+    except:
+        print('expiry not in request')
+        abort(400)
     if asset != 'NZD':
         print('asset %s not supported' % asset)
         abort(400, 'asset (%s) not supported' % asset)
@@ -240,7 +248,7 @@ def payment_create():
         print('%s already exists' % token)
         abort(400)
     print("creating session with windcave")
-    windcave_session_id, windcave_status = windcave_create_session(amount_cents, token)
+    windcave_session_id, windcave_status = windcave_create_session(amount_cents, token, expiry)
     if not windcave_session_id:
         abort(400)
     print("creating payment request object for %s" % token)
