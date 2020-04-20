@@ -5,7 +5,7 @@ import os
 
 if os.getenv("DATABASE_URL"):
     db_url = os.getenv("DATABASE_URL")
-    engine = create_engine(db_url, convert_unicode=True, pool_size=10, max_overflow=20)
+    engine = create_engine(db_url, convert_unicode=True, pool_size=10, max_overflow=20, pool_pre_ping=True)
 else:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     db_url = "sqlite:///%s/acuerdo_payments.db" % dir_path
