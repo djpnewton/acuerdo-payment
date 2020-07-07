@@ -26,8 +26,8 @@ def write_header_record(f, direct_debit_auth_code, sending_bank_account_number, 
     s = "1,,,,%s,7,%s,%s,I\n" % (sending_bank_account_number, due_date, creation_date)
     f.write(s)
 
-def write_transaction_record(f, account_number, amount_cents, sender_name, sender_ref, sender_code, receiver_name, receiver_ref, receiver_code):
-    s = "2,%s,50,%d,%s,%s,%s,,,%s,%s,%s,\n" % (account_number, amount_cents, receiver_name, receiver_ref, receiver_code, sender_name, sender_code, sender_ref)
+def write_transaction_record(f, account_number, amount_cents, sender_name, sender_ref, sender_code, receiver_name, receiver_ref, receiver_code, receiver_particulars):
+    s = "2,%s,50,%d,%s,%s,%s,,%s,%s,%s,%s,\n" % (account_number, amount_cents, receiver_name, receiver_ref, receiver_code, receiver_particulars, sender_name, sender_code, sender_ref)
     f.write(s)
 
 def write_footer_record(f, amount_total_cents, num_txs, hash_total):
@@ -45,9 +45,9 @@ def write_txs(f, direct_debit_auth_code, sending_bank_account_number, sender_nam
     amount_total_cents = 0
     hash_total = 0
     for tx in txs:
-        account_number, amount_cents, sender_ref, sender_code, receiver_name, receiver_ref, receiver_code = tx
+        account_number, amount_cents, sender_ref, sender_code, receiver_name, receiver_ref, receiver_code, receiver_particulars = tx
         account_number = strip_account_number(account_number)
-        write_transaction_record(f, account_number, amount_cents, sender_name, sender_ref, sender_code, receiver_name, receiver_ref, receiver_code)
+        write_transaction_record(f, account_number, amount_cents, sender_name, sender_ref, sender_code, receiver_name, receiver_ref, receiver_code, receiver_particulars)
         amount_total_cents += amount_cents
         count += 1
         hash_total += hash_total_component(account_number)
@@ -56,6 +56,6 @@ def write_txs(f, direct_debit_auth_code, sending_bank_account_number, sender_nam
     write_footer_record(f, amount_total_cents, count, hash_total)
 
 if __name__ == "__main__":
-    txs = [("0201910003676004", 1050, "SENDER_REF1", "SENDER_CODE1", "CUST1", "CUST_REF1", "CUST_CODE1"), ("0201910003676004", 500, "SENDER_REF2", "SENDER_CODE2", "CUST2", "CUST_REF2", "CUST_CODE2")]
+    txs = [("0201910003676004", 1050, "SENDER_REF1", "SENDER_CODE1", "CUST1", "CUST_REF1", "CUST_CODE1", "CUST_PART1"), ("0201910003676004", 500, "SENDER_REF2", "SENDER_CODE2", "CUST2", "CUST_REF2", "CUST_CODE2", "CUST_PART2")]
     with open("test.txt", "w") as f:
         write_txs(f, "", "0201910003676005", "test sender", txs)

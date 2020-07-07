@@ -360,6 +360,16 @@ def payout_create():
         print('account name not in request')
         abort(400)
     try:
+        sender_reference = content['sender_reference']
+    except:
+        print('sender_reference not in request')
+        abort(400)
+    try:
+        sender_code = content['sender_code']
+    except:
+        print('sender_code not in request')
+        abort(400)
+    try:
         reference = content['reference']
     except:
         print('reference not in request')
@@ -368,6 +378,11 @@ def payout_create():
         code = content['code']
     except:
         print('code not in request')
+        abort(400)
+    try:
+        particulars = content['particulars']
+    except:
+        print('particulars not in request')
         abort(400)
 
     if asset != 'NZD':
@@ -382,7 +397,7 @@ def payout_create():
         print('%s already exists' % token)
         abort(400)
     # create payout request
-    req = PayoutRequest(token, asset, amount, SENDER_NAME, SENDER_ACCOUNT, reference, code, account_name, account_number, reference, code, EMAIL_TO, False)
+    req = PayoutRequest(token, asset, amount, SENDER_NAME, SENDER_ACCOUNT, sender_reference, sender_code, account_name, account_number, reference, code, particulars, EMAIL_TO, False)
     db_session.add(req)
     db_session.commit()
     return jsonify(req.to_json())
@@ -500,7 +515,7 @@ def ib4b_response(token, reqs):
         # ingore already processed
         if req.processed:
             continue
-        tx = (req.receiver_account, req.amount, req.sender_reference, req.sender_code, req.receiver, req.receiver_reference, req.receiver_code)
+        tx = (req.receiver_account, req.amount, req.sender_reference, req.sender_code, req.receiver, req.receiver_reference, req.receiver_code, req.receiver_particulars)
         txs.append(tx)
     bnz_ib4b.write_txs(output, "", req.sender_account, req.sender, txs)
     # return file response

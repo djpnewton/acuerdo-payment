@@ -75,6 +75,7 @@ class PayoutRequestSchema(Schema):
     receiver_account = fields.String()
     receiver_reference = fields.String()
     receiver_code = fields.String()
+    receiver_particulars = fields.String()
     email = fields.String()
     email_sent = fields.Boolean()
     processed = fields.Boolean()
@@ -105,13 +106,14 @@ class PayoutRequest(Base):
     receiver_account = Column(String, nullable=False)
     receiver_reference = Column(String, nullable=False)
     receiver_code = Column(String, nullable=False)
+    receiver_particulars = Column(String, nullable=False)
     email = Column(String, nullable=False)
     email_sent = Column(Boolean)
     processed = Column(Boolean)
     status = Column(String)
     groups = relationship('PayoutGroup', secondary='payout_group_requests', back_populates='requests')
 
-    def __init__(self, token, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, email, email_sent):
+    def __init__(self, token, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, receiver_particulars, email, email_sent):
         self.date = time.time()
         self.token = token
         self.secret = str(hexlify(os.urandom(20)), 'ascii').upper()
@@ -125,6 +127,7 @@ class PayoutRequest(Base):
         self.receiver_account = receiver_account
         self.receiver_reference = receiver_reference
         self.receiver_code = receiver_code
+        self.receiver_particulars = receiver_particulars
         self.email = email
         self.email_sent = email_sent
         self.processed = False
