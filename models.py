@@ -36,8 +36,9 @@ class PaymentRequest(Base):
     windcave_allow_retry = Column(Boolean)
     status = Column(String)
     return_url = Column(String)
+    webhook = relationship('PaymentRequestWebhook')
 
-    def __init__(self, token, asset, amount, windcave_session_id, windcave_status, return_url):
+    def __init__(self, token, asset, amount, windcave_session_id, windcave_status, return_url, webhook=None):
         self.date = time.time()
         self.token = token
         self.asset = asset
@@ -61,6 +62,17 @@ class PaymentRequest(Base):
     def to_json(self):
         schema = PaymentRequestSchema()
         return schema.dump(self).data
+
+class PaymentRequestWebhook(Base):
+    __tablename__ = 'payment_request_webhooks'
+    id = Column(Integer, primary_key=True)
+    payment_request_id = Column(Integer, ForeignKey('payment_requests.id'))
+    payment_request = relationship('PaymentRequest')
+    url = Column(String)
+
+    def __init__(self, payment_request, url):
+        self.payment_request = payment_request
+        self.url = url
 
 class PayoutRequestSchema(Schema):
     date = fields.Float()

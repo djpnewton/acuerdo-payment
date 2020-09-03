@@ -10,6 +10,7 @@ from decimal import *
 import json
 import io
 import datetime
+import threading
 
 from flask import Flask, request, jsonify, abort, render_template, make_response, redirect, url_for
 import requests
@@ -18,7 +19,7 @@ from sendgrid.helpers.mail import Mail
 from stdnum.nz import bankaccount
 
 from database import db_session, init_db
-from models import PaymentRequest, PayoutRequest, PayoutGroup, PayoutGroupRequest
+from models import PaymentRequest, PaymentRequestWebhook, PayoutRequest, PayoutGroup, PayoutGroupRequest
 import bnz_ib4b
 
 init_db()
@@ -185,6 +186,18 @@ def check_auth(api_key, sig, body):
     our_sig = create_sig(API_SECRET, body)
     return sig == our_sig
 
+class AsyncRequest(threading.Thread):
+    def __init__(self, task_name, url):
+        self.task_name
+        self.url = url
+
+    def run():
+        try:
+            logger.info('::%s - requesting: %s' % (self.task_name, self.url))
+            requests.get(self.url)
+        except:
+            pass
+
 @app.template_filter('format_timestamp')
 def format_timestamp(ts):
     tz = datetime.datetime.now().astimezone().tzinfo
@@ -237,6 +250,11 @@ def payment_create():
     except:
         print('expiry not in request')
         abort(400)
+    webhook = None
+    try:
+        webhook = content['webhook']
+    except:
+        pass
     if asset != 'NZD':
         print('asset %s not supported' % asset)
         abort(400, 'asset (%s) not supported' % asset)
@@ -254,6 +272,8 @@ def payment_create():
     print("creating payment request object for %s" % token)
     req = PaymentRequest(token, asset, amount_cents, windcave_session_id, windcave_status, return_url)
     db_session.add(req)
+    if webhook:
+        db_session.add(PaymentRequestWebhook(req, webhook))
     db_session.commit()
     return jsonify(req.to_json())
 
@@ -301,6 +321,9 @@ def payment_status_2(token=None):
         if tx_state:
             if tx_state[0]:
                 req.status = CMP
+                # call webhook
+                if req.webhook:
+                    AsyncRequest(req.webhook.url).start()
             elif not tx_state[1]:
                 req.status = CND
             req.windcave_authorised = tx_state[0]
