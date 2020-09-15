@@ -103,6 +103,10 @@ class PayoutGroupRequest(Base):
         self.payout_request_id = request.id
 
 class PayoutRequest(Base):
+    STATUS_CREATED = 'created'
+    STATUS_PROCESSED = 'processed'
+    STATUS_SUSPENDED = 'suspended'
+
     __tablename__ = 'payout_requests'
     id = Column(Integer, primary_key=True)
     date = Column(Float, nullable=False, unique=False)
@@ -143,7 +147,7 @@ class PayoutRequest(Base):
         self.email = email
         self.email_sent = email_sent
         self.processed = False
-        self.status = 'created'
+        self.status = self.STATUS_CREATED
 
     @classmethod
     def count(cls, session):

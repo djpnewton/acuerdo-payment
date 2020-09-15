@@ -510,8 +510,11 @@ def payout_group(token=None, secret=None):
 
 def set_payout_requests_complete(reqs):
     for req in reqs:
+        # ignore suspended
+        if req.status == req.STATUS_SUSPENDED:
+            continue
         req.processed = True
-        req.status = "completed"
+        req.status = req.STATUS_PROCESSED
         db_session.add(req)
     db_session.commit()
 
@@ -529,6 +532,56 @@ def payout_group_processed():
         return redirect('/payout_group/%s/%s' % (token, secret))
     return abort(404)
 
+def set_payout_request_suspended(req):
+    # ignore not in created state
+    if req.status != req.STATUS_CREATED:
+        return False
+    req.status = req.STATUS_SUSPENDED
+    db_session.add(req)
+    db_session.commit()
+    return True
+
+def set_payout_request_created(req):
+    # ignore not in suspended state
+    if req.status != req.STATUS_SUSPENDED:
+        return False
+    req.status = req.STATUS_CREATED
+    db_session.add(req)
+    db_session.commit()
+    return True
+
+@app.route('/payout_request_suspend', methods=['POST'])
+def payout_suspend():
+    if not PAYOUTS_ENABLED:
+        return abort(404)
+    content = request.form
+    token = content['token']
+    secret = content['secret']
+    group_token = content['group_token']
+    group_secret = content['group_secret']
+    print("looking for %s" % token)
+    req = PayoutRequest.from_token(db_session, token)
+    if req and req.secret == secret:
+        set_payout_request_suspended(req)
+        return redirect('/payout_group/%s/%s' % (group_token, group_secret))
+    return abort(404)
+
+@app.route('/payout_request_unsuspend', methods=['POST'])
+def payout_unsuspend():
+    if not PAYOUTS_ENABLED:
+        return abort(404)
+    content = request.form
+    token = content['token']
+    secret = content['secret']
+    group_token = content['group_token']
+    group_secret = content['group_secret']
+    print("looking for %s" % token)
+    req = PayoutRequest.from_token(db_session, token)
+    if req and req.secret == secret:
+        set_payout_request_created(req)
+        return redirect('/payout_group/%s/%s' % (group_token, group_secret))
+    return abort(404)
+
 def ib4b_response(token, reqs):
     # create output 
     output = io.StringIO()
@@ -537,6 +590,9 @@ def ib4b_response(token, reqs):
     for req in reqs:
         # ingore already processed
         if req.processed:
+            continue
+        # ignore suspended
+        if req.status == req.STATUS_SUSPENDED:
             continue
         tx = (req.receiver_account, req.amount, req.sender_reference, req.sender_code, req.receiver, req.receiver_reference, req.receiver_code, req.receiver_particulars)
         txs.append(tx)

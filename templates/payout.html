@@ -65,10 +65,10 @@
                             BNZ IB4B File: <a href="/payout_group/BNZ_IB4B_file/{{group.token}}/{{group.secret}}">{{group.token}}</a>
                         </p>
                         <p>
-                            <form action="/payout_group_processed" method="post" id="submit_form">
+                            <form action="/payout_group_processed" method="post" id="submit_form_all_processed">
                                 <input type="hidden" name="token" value="{{group.token}}" />
                                 <input type="hidden" name="secret" value="{{group.secret}}" />
-                                <input type="button" value="Set all processed" id="submit_button" data-toggle="modal" data-target="#confirm_submit" class="btn btn-default" />
+                                <input type="button" value="Set all processed" data-action="processed" data-form="submit_form_all_processed" data-toggle="modal" data-target="#confirm_submit" class="btn btn-default submit_button" />
                             </form>
                         </p>
                     </div>
@@ -85,7 +85,7 @@
                         Confirm Submit
                     </div>
                     <div class="modal-body">
-                        Are you sure you want to set processed?
+                        Are you sure you want to set <span id="submit_action">????</span>?
                     </div>
 
                     <div class="modal-footer">
@@ -104,9 +104,19 @@
         <!-- site js -->
         <script src="/static/js/site.js"></script>
 
-        <script type="text/javascript">                 
+
+        <script type="text/javascript">         
+            var form_id = null;
+
+            $('.submit_button').click(function() {
+                form_id = null;
+                form_id = this.getAttribute('data-form');
+                var action = this.getAttribute('data-action');
+                $('#submit_action').text(action);
+            });
+
             $('#submit').click(function(){
-                $('#submit_form').submit();
+                $('#' + form_id).submit();
             });
 		</script>
 
