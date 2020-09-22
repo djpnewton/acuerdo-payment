@@ -104,7 +104,7 @@ class PayoutGroupRequest(Base):
 
 class PayoutRequest(Base):
     STATUS_CREATED = 'created'
-    STATUS_PROCESSED = 'processed'
+    STATUS_COMPLETED = 'completed'
     STATUS_SUSPENDED = 'suspended'
 
     __tablename__ = 'payout_requests'
@@ -160,6 +160,10 @@ class PayoutRequest(Base):
     @classmethod
     def not_processed(cls, session):
         return session.query(cls).filter(cls.processed == False).all()
+
+    @classmethod
+    def where_status_processed(cls, session):
+        return session.query(cls).filter(cls.status == 'processed')
 
     def __repr__(self):
         return '<PayoutRequest %r>' % (self.token)

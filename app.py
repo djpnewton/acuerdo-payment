@@ -514,7 +514,7 @@ def set_payout_requests_complete(reqs):
         if req.status == req.STATUS_SUSPENDED:
             continue
         req.processed = True
-        req.status = req.STATUS_PROCESSED
+        req.status = req.STATUS_COMPLETED
         db_session.add(req)
     db_session.commit()
 
@@ -614,6 +614,18 @@ def payout_group_ib4b_file(token=None, secret=None):
     if group.secret != secret:
         return abort(400, 'sorry, group not authorised')
     return ib4b_response("group_" + group.token, group.requests)
+
+@app.route('/payout_processed_to_completed')
+def payout_processed_to_completed():
+    if not PAYOUTS_ENABLED:
+        return abort(404)
+    count = 0
+    for req in PayoutRequest.where_status_processed(db_session):
+        req.status = req.STATUS_COMPLETED
+        db_session.add(req)
+        count += 1
+    db_session.commit()
+    return str(count)
 
 if __name__ == '__main__':
     setup_logging(logging.DEBUG)
