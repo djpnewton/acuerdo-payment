@@ -302,15 +302,12 @@ def payment_status():
         return jsonify(req.to_json())
     return abort(404)
 
-@app.route('/payment/<token>', methods=['GET'])
-def payment_status_2(token=None):
-    if not PAYMENTS_ENABLED:
-        return abort(404)
+def get_payment_request_status(token):
     CMP = 'completed'
     CND = 'cancelled'
     req = PaymentRequest.from_token(db_session, token)
     if not req:
-        return abort(404, 'sorry, request not found')
+        return None, False, False, ''
     completed = req.status == CMP
     cancelled = req.status == CND
     windcave_url = ''
@@ -332,6 +329,26 @@ def payment_status_2(token=None):
         db_session.commit()
     completed = req.status == CMP
     cancelled = req.status == CND
+    return req, completed, cancelled, windcave_url
+
+@app.route('/payment/<token>', methods=['GET'])
+def payment_interstitial(token=None):
+    if not PAYMENTS_ENABLED:
+        return abort(404)
+    req, completed, cancelled, windcave_url = get_payment_request_status(token)
+    if not req:
+        return abort(404, 'sorry, request not found')
+    if completed or cancelled:
+        return redirect('/payment/x/%s' % token)
+    return render_template('payment_request.html', production=PRODUCTION, token=token, interstitial=True)
+
+@app.route('/payment/x/<token>', methods=['GET'])
+def payment(token=None):
+    if not PAYMENTS_ENABLED:
+        return abort(404)
+    req, completed, cancelled, windcave_url = get_payment_request_status(token)
+    if not req:
+        return abort(404, 'sorry, request not found')
     return render_template('payment_request.html', production=PRODUCTION, token=token, completed=completed, cancelled=cancelled, req=req, windcave_url=windcave_url, return_url=req.return_url)
 
 def send_payout_email(group):
