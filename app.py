@@ -188,10 +188,11 @@ def check_auth(api_key, sig, body):
 
 class AsyncRequest(threading.Thread):
     def __init__(self, task_name, url):
-        self.task_name
+        threading.Thread.__init__(self)
+        self.task_name = task_name
         self.url = url
 
-    def run():
+    def run(self):
         try:
             logger.info('::%s - requesting: %s' % (self.task_name, self.url))
             requests.get(self.url)
@@ -320,7 +321,7 @@ def get_payment_request_status(token):
                 req.status = CMP
                 # call webhook
                 if req.webhook:
-                    AsyncRequest(req.webhook.url).start()
+                    AsyncRequest('payment request webhook', req.webhook.url).start()
             elif not tx_state[1]:
                 req.status = CND
             req.windcave_authorised = tx_state[0]

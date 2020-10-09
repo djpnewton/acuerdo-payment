@@ -4,7 +4,7 @@ from binascii import hexlify
 
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
 import sqlalchemy.types as types
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql.expression import func
 from sqlalchemy import or_, and_, desc
 from marshmallow import Schema, fields
@@ -36,7 +36,7 @@ class PaymentRequest(Base):
     windcave_allow_retry = Column(Boolean)
     status = Column(String)
     return_url = Column(String)
-    webhook = relationship('PaymentRequestWebhook')
+    #webhook = relationship('PaymentRequestWebhook', backref=backref('payment_request', uselist=False))
 
     def __init__(self, token, asset, amount, windcave_session_id, windcave_status, return_url, webhook=None):
         self.date = time.time()
@@ -67,7 +67,7 @@ class PaymentRequestWebhook(Base):
     __tablename__ = 'payment_request_webhooks'
     id = Column(Integer, primary_key=True)
     payment_request_id = Column(Integer, ForeignKey('payment_requests.id'))
-    payment_request = relationship('PaymentRequest')
+    payment_request = relationship('PaymentRequest', backref=backref('webhook', uselist=False))
     url = Column(String)
 
     def __init__(self, payment_request, url):
